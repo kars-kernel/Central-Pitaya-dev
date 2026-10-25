@@ -1,0 +1,42 @@
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    init: true
+    environment:
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Defina ADMIN_PASSWORD no arquivo .env}
+      COOKIE_SECURE: "true"
+      TRUST_PROXY: "true"
+      DATA_DIR: /data
+      BACKUP_DIR: /backups
+    volumes:
+      - app_data:/data
+      - app_backups:/backups
+    networks: [internal]
+    stop_grace_period: 30s
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:?Defina DOMAIN no arquivo .env}
+      ACME_EMAIL: ${ACME_EMAIL:?Defina ACME_EMAIL no arquivo .env}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [internal]
+    depends_on:
+      app:
+        condition: service_healthy
+networks:
+  internal:
+volumes:
+  app_data:
+  app_backups:
+  caddy_data:
+  caddy_config:
