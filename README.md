@@ -24,9 +24,42 @@ docker compose up -d --build
 
 4. Abra `https://SEU_DOMINIO`, entre e crie a primeira matéria no Learn.
 
-A senha inicial é lidaSobre sobresos somente na criação do banco. Alterar `.env` depois não altera a senha existente: use o procedimento administrativo abaixo. Também é possível fornecer `ADMIN_PASSWORD_FILE` ao processo em vez de `ADMIN_PASSWORD` para usar um arquivo de segredo.
+A senha inicial é definida somente na criação do banco. Alterar `.env` depois não altera a senha existente: use o procedimento administrativo abaixo. Também é possível fornecer `ADMIN_PASSWORD_FILE` ao processo em vez de `ADMIN_PASSWORD` para usar um arquivo de segredo.
 
-Apenas o Caddy publica portas. O aplicativo executa como usuário `node`, com cookie HttpOnly/Secure/SameSite e arquivos acessíveis mediante login. Não existe cadastro público. O endpoint `/api/health` é público e não retorna dados pessoais. O diretório SQLite deve estar em disco local, não em NFS; execute uma única instância do aplicativo.
+O Caddy atende o acesso pelo domínio. A porta 3000 do aplicativo fica acessível somente no próprio servidor (`127.0.0.1`), para permitir um proxy privado como Tailscale Serve sem expor essa porta na rede. O aplicativo executa como usuário `node`, com cookie HttpOnly/Secure/SameSite e arquivos acessíveis mediante login. Não existe cadastro público. O endpoint `/api/health` é público e não retorna dados pessoais. O diretório SQLite deve estar em disco local, não em NFS; execute uma única instância do aplicativo.
+
+### Acesso privado com Tailscale (incluindo CGNAT)
+
+Use esta opção para acessar o app apenas pelos seus dispositivos autenticados no mesmo tailnet, mesmo quando o provedor usa CGNAT. Não é preciso encaminhar portas no roteador. O Compose acima mantém a porta 3000 limitada ao próprio servidor; o Tailscale Serve cria o endereço HTTPS privado.
+
+No servidor Debian, instale e conecte o Tailscale:
+
+```sh
+curl -fsSL https://tailscale.com/install.sh | sh
+sudo tailscale up
+```
+
+Abra o link de autenticação que o comando mostrar e entre na conta Tailscale que usará nos outros dispositivos. Depois que o app estiver iniciado com `docker compose up -d --build`, configure o proxy privado:
+
+```sh
+sudo tailscale serve --bg 3000
+sudo tailscale serve status
+```
+
+O comando mostra um endereço HTTPS `https://NOME-DO-SERVIDOR.NOME-DO-TAILNET.ts.net`. Instale o Tailscale no computador ou celular de onde vai acessar e entre na mesma conta; então abra esse endereço. O primeiro uso pode pedir para habilitar HTTPS no tailnet. Mantenha o acesso do tailnet restrito aos seus próprios dispositivos.
+
+### Atualizar a instalação no servidor
+
+Depois de receber uma alteração publicada no GitHub, atualize o clone existente no servidor. Não é necessário clonar novamente:
+
+```sh
+cd ~/Central-Pitaya-dev/sites/meu-espaco
+git pull --ff-only
+docker compose up -d --build
+docker compose ps
+```
+
+O banco e os uploads permanecem nos volumes do Docker. Faça o backup descrito abaixo antes de atualizar.
 
 Volumes persistentes:
 
